@@ -1,24 +1,43 @@
-import { BufferAttribute, BufferGeometry, Line, LineBasicMaterial, Mesh, MeshBasicMaterial, MeshPhongMaterial, Sphere, SphereGeometry, Vector3 } from "three";
+import { BufferAttribute, BufferGeometry, Line, LineBasicMaterial, Mesh, MeshBasicMaterial, MeshPhongMaterial, Sphere, SphereGeometry, Vector2, Vector3 } from "three";
 import { Renderable } from "./renderable";
 import { main } from "./main";
 import { BufferGeometryUtils } from "three/examples/jsm/Addons.js";
+import { bezierDefinedCurve } from "./bezierDefinedCurve";
 
 export class Fish extends Renderable{
     length:number = 8;
     maxWidth:number = 0.5;
     maxHeight:number = 1;
-    rings:number = 30;
+    rings:number = 40;
     ringSegments:RingSegment[] = [];
 
     constructor(main:main){
         super(main);
+        //create the "Dorsal" profile of the fish
+        let tailPositionX = 0.82;
+        let dorsalProfile = new bezierDefinedCurve([
+            new Vector3(0, 0, 0.8),
+            new Vector3(0.32, 0.9, 0.17),
+            new Vector3(tailPositionX-0.2, 0.4, 0),
+            new Vector3(tailPositionX, 0.1, -0.01),
+            new Vector3(1, 1, 0.1)
+        ]);
+
+        let sideProfile = new bezierDefinedCurve([
+            new Vector3(0, 0, 0.4),
+            new Vector3(0.4, 0.5, 0.1),
+            new Vector3(0.6, 0.5, 0.1),
+            new Vector3(tailPositionX, 0.1, 0.1),
+            new Vector3(1, 0, 0.1)
+        ]);
+
         for (let i = 0; i < this.rings; i++){
             let ringSegment = new RingSegment(
                 50,
                 new Vector3(0,Math.PI/2,0),
                 ((i/this.rings) - 0.5) * this.length,
-                Math.sin((i/(this.rings/1.5)) * Math.PI) * this.maxHeight,
-                Math.sin((i/(this.rings/1.5)) * Math.PI) * this.maxHeight
+                sideProfile.getYfromX(i/this.rings),
+                dorsalProfile.getYfromX(i/this.rings)
             );
             this.ringSegments.push(ringSegment);
         }
@@ -73,7 +92,7 @@ export class Fish extends Renderable{
         ), 3));
 
         //compute normals
-        geometry = BufferGeometryUtils.mergeVertices(geometry, 0.1);
+        geometry = BufferGeometryUtils.mergeVertices(geometry, 0.01);
         geometry.computeVertexNormals();
         geometry.normalizeNormals();
 
@@ -143,3 +162,4 @@ export function phaseToPoint(phase:number, rotation:Vector3, positionZ:number, w
 
     return new Vector3(x4, y4, z4);
 }
+
