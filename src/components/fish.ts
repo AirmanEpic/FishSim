@@ -140,10 +140,10 @@ export class Fish extends Renderable{
             // using the rotation vector as the direction
 
             let thisRotation = new Vector3(0,Math.PI/2,0);
-            let startPoint = Math.floor(this.rings/5)
+            let startPoint = 1
             console.log(startPoint)
             if (i < startPoint){
-                this.rotationsLastFrame[i] = new Vector3(0,Math.sin((this.animationFrame/100)*Math.PI*2)*rotForce + Math.PI/2,0);
+                this.rotationsLastFrame[i] = new Vector3(0,Math.sin((this.animationFrame/101)*Math.PI*2)*rotForce + Math.PI/2,0);
                 thisRotation = this.rotationsLastFrame[i];
             }else{
                 thisRotation = this.rotationsLastFrame[i-1];
