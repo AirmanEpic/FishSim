@@ -8,7 +8,6 @@ export class bezierDefinedCurve{
     constructor(points:Vector3[]){
         // the third value is the control point distance.
         this.curve = [];
-        
         for (let i = 0; i < points.length-1; i++){
             let point1 = new Vector2(points[i].x, points[i].y)
             let point2 = new Vector2(0,0)

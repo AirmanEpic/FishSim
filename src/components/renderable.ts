@@ -16,4 +16,17 @@ export class Renderable{
             this.main.scene.add(this.mesh);
         }
     }
+
+    reRender(){
+        this.unmount();
+        this.mount();
+    }
+
+    animate(){}
+
+    unmount(){
+        //remove the fish from the scene (presumably for a re-render)
+        if (this.mesh && this.main.scene)
+        this.main.scene.remove(this.mesh); 
+    }
 }

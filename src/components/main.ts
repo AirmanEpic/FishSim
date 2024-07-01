@@ -47,5 +47,9 @@ export class main{
     animate = () => {
         requestAnimationFrame(this.animate);
         this.renderer.render(this.scene, this.camera);
+        this.renderObjects.forEach((renderObject) => {
+            renderObject.animate();
+            renderObject.reRender();
+        })
     }
 }

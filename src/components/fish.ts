@@ -10,12 +10,15 @@ export class Fish extends Renderable{
     maxHeight:number = 1;
     rings:number = 40;
     ringSegments:RingSegment[] = [];
-
+    animationFrame:number = 0;
+    sideProfile:bezierDefinedCurve;
+    dorsalProfile:bezierDefinedCurve
+    rotationsLastFrame:Vector3[] = [];
     constructor(main:main){
         super(main);
         //create the "Dorsal" profile of the fish
         let tailPositionX = 0.82;
-        let dorsalProfile = new bezierDefinedCurve([
+        this.dorsalProfile = new bezierDefinedCurve([
             new Vector3(0, 0, 0.8),
             new Vector3(0.32, 0.9, 0.17),
             new Vector3(tailPositionX-0.2, 0.4, 0),
@@ -23,7 +26,7 @@ export class Fish extends Renderable{
             new Vector3(1, 1, 0.1)
         ]);
 
-        let sideProfile = new bezierDefinedCurve([
+        this.sideProfile = new bezierDefinedCurve([
             new Vector3(0, 0, 0.4),
             new Vector3(0.4, 0.5, 0.1),
             new Vector3(0.6, 0.5, 0.1),
@@ -35,11 +38,12 @@ export class Fish extends Renderable{
             let ringSegment = new RingSegment(
                 50,
                 new Vector3(0,Math.PI/2,0),
-                ((i/this.rings) - 0.5) * this.length,
-                sideProfile.getYfromX(i/this.rings),
-                dorsalProfile.getYfromX(i/this.rings)
+                new Vector3(0,0,((i/this.rings) - 0.5) * this.length),
+                this.sideProfile.getYfromX(i/this.rings),
+                this.dorsalProfile.getYfromX(i/this.rings),
             );
             this.ringSegments.push(ringSegment);
+            this.rotationsLastFrame.push(new Vector3(0,Math.PI/2,0));
         }
     }
 
@@ -100,7 +104,79 @@ export class Fish extends Renderable{
         let mat = new MeshPhongMaterial({color: 0xffffff, side: 2, shininess: 100, specular: 0xffffff})
         mat.flatShading = false
         let mesh = new Mesh(geometry, mat);
+        this.mesh = mesh;
         this.main.scene.add(mesh);
+    }
+
+    animate(){
+
+        this.ringSegments = [];
+        let previousSegmentPosition = new Vector3(0,0,0);
+        // let wigglet = new bezierDefinedCurve([
+        //     new Vector3(0,0.6,0.01),
+        //     new Vector3(0.5,0.8,0.01),
+        //     new Vector3(1,1,0.01),
+        //     new Vector3(3,20,0.01),
+        // ]);
+
+        // let wiggleforce = 0.1;
+
+        // //where the "Wave" is at this point in time.
+        // let wigglePos = wigglet.getYfromX(this.animationFrame/50);
+
+        // let rotator = new bezierDefinedCurve([
+        //     new Vector3(0,Math.PI/2,0.001),
+        //     new Vector3(0.4,(Math.PI/2)+wiggleforce,0.01),
+        //     new Vector3(wigglePos,(Math.PI/2)-wiggleforce,0.1),
+        //     new Vector3(10,(Math.PI/2),0.01),
+        // ])
+        let rotForce = Math.PI/8;
+
+        let newLastRotations = [];
+        for (let i = 0; i < this.rings; i++){
+            let unmovedVector = previousSegmentPosition.clone();
+            let distance = this.length/this.rings;
+            //to get the new position, we need to move in the direction of the previous segment's rotation, by the distance of the segment
+            // using the rotation vector as the direction
+
+            let thisRotation = new Vector3(0,Math.PI/2,0);
+            let startPoint = Math.floor(this.rings/5)
+            console.log(startPoint)
+            if (i < startPoint){
+                this.rotationsLastFrame[i] = new Vector3(0,Math.sin((this.animationFrame/100)*Math.PI*2)*rotForce + Math.PI/2,0);
+                thisRotation = this.rotationsLastFrame[i];
+            }else{
+                thisRotation = this.rotationsLastFrame[i-1];
+            }
+
+            let rotatedVector = new Vector3(
+                Math.cos(thisRotation.y) * distance,
+                0,
+                Math.sin(thisRotation.y) * distance,
+            ).add(unmovedVector);
+
+
+
+            let ringSegment = new RingSegment(
+                50,
+                thisRotation,
+                rotatedVector,
+                this.sideProfile.getYfromX(i/this.rings),
+                this.dorsalProfile.getYfromX(i/this.rings),
+            );
+            this.ringSegments.push(ringSegment);
+            // previousSegmentRotation = ringSegment.rotation;
+            newLastRotations.push(thisRotation);
+            previousSegmentPosition = rotatedVector;
+        }
+
+        //update the rotations
+        this.rotationsLastFrame = newLastRotations;
+
+        this.animationFrame++;
+        if (this.animationFrame > 100){
+            this.animationFrame = 0;
+        }
     }
 }
 
@@ -110,14 +186,14 @@ export class RingSegment{
     segments:number;
     lineSegments:LineSegment[] = [];
     rotation:Vector3 = new Vector3(0,0,0);
-    constructor(segments:number, rotation:Vector3, positionZ:number, width:number, height:number){
+    constructor(segments:number, rotation:Vector3, basePos:Vector3, width:number, height:number){
         let phase = 0;
         this.width = width;
         this.height = height;
         this.segments = segments;
-        let previousPoint = phaseToPoint(phase, rotation, positionZ, width, height);
+        let previousPoint = phaseToPoint(phase, rotation, width, height, basePos);
         for (let i = 0; i < segments+1; i++){
-            let point = phaseToPoint(((2*Math.PI)/segments) * i, rotation, positionZ, width, height);
+            let point = phaseToPoint(((2*Math.PI)/segments) * i, rotation, width, height, basePos);
             //add the new line segment
             this.lineSegments.push(new LineSegment(
                 previousPoint,
@@ -138,11 +214,11 @@ export class LineSegment{
     }
 }
 
-export function phaseToPoint(phase:number, rotation:Vector3, positionZ:number, width:number, height:number):Vector3{
+export function phaseToPoint(phase:number, rotation:Vector3, width:number, height:number, previousPoint:Vector3):Vector3{
     let phaseAngle = phase
-    let x = Math.cos(phaseAngle) * width;
-    let y = Math.sin(phaseAngle) * height;
-    let z = positionZ;
+    let x = (Math.cos(phaseAngle) * width) + previousPoint.x;
+    let y = (Math.sin(phaseAngle) * height) + previousPoint.y;
+    let z = previousPoint.z;
     //now rotate these points based on the rotation vector
     let x1 = x;
     let y1 = y;
