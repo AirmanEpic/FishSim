@@ -112,27 +112,11 @@ export class Fish extends Renderable{
 
         this.ringSegments = [];
         let previousSegmentPosition = new Vector3(0,0,0);
-        // let wigglet = new bezierDefinedCurve([
-        //     new Vector3(0,0.6,0.01),
-        //     new Vector3(0.5,0.8,0.01),
-        //     new Vector3(1,1,0.01),
-        //     new Vector3(3,20,0.01),
-        // ]);
 
-        // let wiggleforce = 0.1;
-
-        // //where the "Wave" is at this point in time.
-        // let wigglePos = wigglet.getYfromX(this.animationFrame/50);
-
-        // let rotator = new bezierDefinedCurve([
-        //     new Vector3(0,Math.PI/2,0.001),
-        //     new Vector3(0.4,(Math.PI/2)+wiggleforce,0.01),
-        //     new Vector3(wigglePos,(Math.PI/2)-wiggleforce,0.1),
-        //     new Vector3(10,(Math.PI/2),0.01),
-        // ])
         let rotForce = Math.PI/8;
 
-        let newLastRotations = [];
+        let newLastRotations = []; //we have to save the previous frame's rotations, because the next frame's rotations are based on the previous frame's rotations (from 1 ring ago)
+        
         for (let i = 0; i < this.rings; i++){
             let unmovedVector = previousSegmentPosition.clone();
             let distance = this.length/this.rings;
@@ -140,23 +124,26 @@ export class Fish extends Renderable{
             // using the rotation vector as the direction
 
             let thisRotation = new Vector3(0,Math.PI/2,0);
-            let startPoint = 1
-            console.log(startPoint)
+            let startPoint = 1 //what segment the fishes' tail motion starts at. 1 is basically the first working segment.
+            //this is kinda irrelevant because it doesn't look right if the tail's start isn't 0.
             if (i < startPoint){
+                //we're forcing rotation on the first segment to make the tail wag
                 this.rotationsLastFrame[i] = new Vector3(0,Math.sin((this.animationFrame/101)*Math.PI*2)*rotForce + Math.PI/2,0);
                 thisRotation = this.rotationsLastFrame[i];
             }else{
+                //then we rotate the segment based on the previous segment's rotation last frame.
                 thisRotation = this.rotationsLastFrame[i-1];
             }
 
+            //some more mathy stuff to move along the fish's body. Unfortunately, this is only 1 axis of rotation.
+            //at some point we might add pitch, but really, the fish's body is mostly just yawing.
             let rotatedVector = new Vector3(
                 Math.cos(thisRotation.y) * distance,
                 0,
                 Math.sin(thisRotation.y) * distance,
             ).add(unmovedVector);
 
-
-
+            //we have to regenerate the ring segments as we're animating.
             let ringSegment = new RingSegment(
                 50,
                 thisRotation,
@@ -164,13 +151,12 @@ export class Fish extends Renderable{
                 this.sideProfile.getYfromX(i/this.rings),
                 this.dorsalProfile.getYfromX(i/this.rings),
             );
-            this.ringSegments.push(ringSegment);
-            // previousSegmentRotation = ringSegment.rotation;
-            newLastRotations.push(thisRotation);
-            previousSegmentPosition = rotatedVector;
+            this.ringSegments.push(ringSegment); //storing the actual ring segments for rendering
+            newLastRotations.push(thisRotation); //storing the rotations for the next frame.
+            previousSegmentPosition = rotatedVector; //store the position for the next segment.
         }
 
-        //update the rotations
+        //store this frame's rotations for the next frame.
         this.rotationsLastFrame = newLastRotations;
 
         this.animationFrame++;
@@ -215,10 +201,12 @@ export class LineSegment{
 }
 
 export function phaseToPoint(phase:number, rotation:Vector3, width:number, height:number, previousPoint:Vector3):Vector3{
+    //we start with a circle.
     let phaseAngle = phase
     let x = (Math.cos(phaseAngle) * width) + previousPoint.x;
     let y = (Math.sin(phaseAngle) * height) + previousPoint.y;
     let z = previousPoint.z;
+    //however, since a given ring is rotated, we must then rotate the point about the "origin" which is "previousPoint"
     //now rotate these points based on the rotation vector
     let x1 = x;
     let y1 = y;
@@ -236,6 +224,7 @@ export function phaseToPoint(phase:number, rotation:Vector3, width:number, heigh
     let y4 = x3 * Math.sin(rotation.z) + y3 * Math.cos(rotation.z);
     let z4 = z3;
 
+    //the rotated vector is now x4, y4, z4
     return new Vector3(x4, y4, z4);
 }
 
