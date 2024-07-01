@@ -128,7 +128,11 @@ export class Fish extends Renderable{
             //this is kinda irrelevant because it doesn't look right if the tail's start isn't 0.
             if (i < startPoint){
                 //we're forcing rotation on the first segment to make the tail wag
-                this.rotationsLastFrame[i] = new Vector3(0,Math.sin((this.animationFrame/101)*Math.PI*2)*rotForce + Math.PI/2,0);
+                
+                let sinPhase = (this.animationFrame/101)*Math.PI*2; //Sin generates a smooth wave from 0 to 1 to 0 to -1 to 0 again, which makes it ideal for tail wagging.
+                //however, to get sin to perform like this, we need to treat the phase as a percentage of the animation frame.
+                let tailWag = Math.sin(sinPhase) * rotForce; //the tail wag is a force that is applied to the rotation of the tail.
+                this.rotationsLastFrame[i] = new Vector3(0, tailWag + Math.PI/2,0);
                 thisRotation = this.rotationsLastFrame[i];
             }else{
                 //then we rotate the segment based on the previous segment's rotation last frame.
